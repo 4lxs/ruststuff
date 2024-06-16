@@ -1,3 +1,4 @@
-.direnv
-
+/.direnv
 target/
+/.pre-commit-config.yaml
+/just-flake.just

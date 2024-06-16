@@ -1,7 +1,6 @@
 [package]
-name = "scrap"
+name = "json_parser"
 version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-itertools = "0.12.1"
