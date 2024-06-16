@@ -59,9 +59,9 @@
                 "rustc"
               ]);
 
-          mkCrateOutputs = src: name:
+          mkCrateOutputs = srcpath: name:
             let
-              src = craneLib.cleanCargoSource ./json_parser;
+              src = craneLib.cleanCargoSource srcpath;
 
               commonArgs = {
                 inherit src;
@@ -126,6 +126,7 @@
 
           projs = {
             json_parser = mkCrateOutputs ./json_parser "json_parser";
+            ds = mkCrateOutputs ./ds "ds";
           };
         in
         {

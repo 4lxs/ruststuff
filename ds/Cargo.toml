@@ -1,0 +1,15 @@
+[workspace]
+resolver = "2"
+
+members = [
+    "binary_tree"
+]
+
+[workspace.package]
+version = "0.0.0"
+authors = ["svl"]
+edition = "2021"
+
+[workspace.metadata]
+[workspace.metadata.crane]
+name = "ds"
