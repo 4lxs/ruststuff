@@ -6,7 +6,7 @@
 |-----------------------------|---------------------------------------------------|--------|
 | todo list                   | using sqlite. add, remove, list                   | done   |
 | json parser                 | json to ast [1] [6]                               | done   |
-| calculator                  | normal, rpn, handroll arbitrary precision [1] [6] | todo   |
+| calculator                  | normal, rpn, handroll arbitrary precision [1] [6] | done   |
 | regex engine                | [1]                                               | todo   |
 | concurrent data structures  | [2]                                               | todo   |
 | search engine               | [1]                                               | todo   |
