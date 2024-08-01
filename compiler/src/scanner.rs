@@ -2,9 +2,11 @@ use std::{
     cell,
     collections::HashMap,
     error, fmt,
+    iter::Peekable,
     num::{ParseFloatError, ParseIntError},
     ops,
     str::Chars,
+    vec,
 };
 
 #[derive(Debug)]
@@ -92,7 +94,31 @@ impl<'a> Scanner<'a> {
     }
 }
 
-pub fn scan_tokens(script: &String) -> Result<Vec<Token>, ScanError> {
+#[derive(Debug)]
+pub struct Tokens {
+    tokens: Peekable<vec::IntoIter<Token>>,
+}
+
+impl Tokens {
+    pub fn new(script: String) -> Self {
+        let tokens = scan_tokens(&script).unwrap().into_iter().peekable();
+        Self { tokens }
+    }
+
+    pub fn peek(&mut self) -> Option<&Token> {
+        self.tokens.peek()
+    }
+}
+
+impl Iterator for Tokens {
+    type Item = Token;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.tokens.next()
+    }
+}
+
+fn scan_tokens(script: &String) -> Result<Vec<Token>, ScanError> {
     let keywords: HashMap<&str, TokenType> = HashMap::from([
         ("and", TokenType::And),
         ("class", TokenType::Class),
@@ -114,8 +140,6 @@ pub fn scan_tokens(script: &String) -> Result<Vec<Token>, ScanError> {
 
     let mut scanner = Scanner::new(script);
     let mut tokens = Vec::new();
-
-    println!("scanning: {script}");
 
     while let Some(c) = scanner.advance() {
         let location_start = scanner.location;
@@ -262,8 +286,6 @@ impl ops::Add<u64> for Location {
     type Output = Location;
 
     fn add(self, rhs: u64) -> Self::Output {
-        println!("adding {} to {}", self.char, rhs);
-        println!("adding {} to {}", self.column, rhs);
         Location {
             char: self.char + rhs,
             column: self.column + rhs,

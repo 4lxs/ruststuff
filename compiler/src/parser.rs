@@ -1,27 +1,66 @@
+use std::{iter::Peekable, vec};
+
 use crate::{
     ast::Expr,
-    scanner::{Token, TokenType},
+    scanner::{Token, TokenType, Tokens},
 };
 
-#[derive(Debug)]
-struct Parser<'a> {
-    tokens: &'a Vec<Token>,
-    current: usize,
+pub struct Statements {
+    statements: Peekable<vec::IntoIter<Expr>>,
 }
 
-impl<'a> Parser<'a> {
-    fn expression(&self) -> Box<Expr> {
+impl Statements {
+    pub fn peek(&mut self) -> Option<&Expr> {
+        self.statements.peek()
+    }
+}
+
+impl Iterator for Statements {
+    type Item = Expr;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.statements.next()
+    }
+}
+
+pub fn parse(tokens: Tokens) -> Statements {
+    let mut parser = Parser::new(tokens);
+    let mut statements = Vec::new();
+    while let Some(expr) = parser.parse_statement() {
+        statements.push(*expr);
+    }
+    Statements {
+        statements: statements.into_iter().peekable(),
+    }
+}
+
+pub struct Parser {
+    tokens: Tokens,
+}
+
+impl Parser {
+    fn new(tokens: Tokens) -> Self {
+        Self { tokens }
+    }
+
+    fn parse_statement(&mut self) -> Option<Box<Expr>> {
+        self.expression()
+    }
+}
+
+impl Parser {
+    fn expression(&mut self) -> Option<Box<Expr>> {
         self.equality()
     }
 
-    fn equality(&self) -> Box<Expr> {
+    fn equality(&mut self) -> Option<Box<Expr>> {
         self.match_binary(
             &[TokenType::BangEqual, TokenType::EqualEqual],
             Parser::comparison,
         )
     }
 
-    fn comparison(&self) -> Box<Expr> {
+    fn comparison(&mut self) -> Option<Box<Expr>> {
         self.match_binary(
             &[
                 TokenType::Greater,
@@ -33,77 +72,64 @@ impl<'a> Parser<'a> {
         )
     }
 
-    fn term(&self) -> Box<Expr> {
+    fn term(&mut self) -> Option<Box<Expr>> {
         self.match_binary(&[TokenType::Minus, TokenType::Plus], Parser::factor)
     }
 
-    fn factor(&self) -> Box<Expr> {
+    fn factor(&mut self) -> Option<Box<Expr>> {
         self.match_binary(&[TokenType::Slash, TokenType::Star], Parser::unary)
     }
 
-    fn unary(&self) -> Box<Expr> {
+    fn unary(&mut self) -> Option<Box<Expr>> {
         if let Some(operator) = self.consume(&[TokenType::Bang, TokenType::Minus]) {
-            let right = self.unary();
-            Box::new(Expr::Unary(operator, right))
+            let right = self.unary()?;
+            Some(Box::new(Expr::Unary(operator, right)))
         } else {
             self.primary()
         }
     }
 
-    fn primary(&self) -> Box<Expr> {
+    fn primary(&mut self) -> Option<Box<Expr>> {
         if let Some(operator) = self.consume(&[TokenType::False, TokenType::True, TokenType::Nil]) {
-            return Box::new(Expr::Literal(operator));
+            return Some(Box::new(Expr::Literal(operator)));
         }
 
-        let matched_token = self.tokens.get(self.current).and_then(|curr| {
-            self.current += 1;
-            match curr.token_type {
-                TokenType::Integer(_) => Some(*curr),
-                TokenType::String(_) => Some(*curr),
-                TokenType::Decimal(_) => Some(*curr),
-                _ => None,
-            }
+        let matched_token = self.tokens.next().and_then(|curr| match curr.token_type {
+            TokenType::Integer(_) => Some(curr),
+            TokenType::String(_) => Some(curr),
+            TokenType::Decimal(_) => Some(curr),
+            _ => None,
         });
         if let Some(tok) = matched_token {
-            return Box::new(Expr::Literal(tok));
+            return Some(Box::new(Expr::Literal(tok)));
         }
 
         if let Some(operator) = self.consume(&[TokenType::LeftParen]) {
-            let expr = self.expression();
-            if self.consume(&[TokenType::RightParen]).is_some() {
-                return Box::new(Expr::Grouping(expr));
-            } else {
-                panic!("fuck");
-            }
+            let expr = self.expression()?;
+            self.consume(&[TokenType::RightParen])?;
+            return Some(Box::new(Expr::Grouping(expr)));
         }
 
-        panic!("fuck");
+        None
     }
 
     fn match_binary(
-        &'a mut self,
+        &mut self,
         tokens: &[TokenType],
-        f: fn(&'a Parser<'a>) -> Box<Expr>,
-    ) -> Box<Expr> {
-        let mut expr = f(self);
+        f: fn(&mut Parser) -> Option<Box<Expr>>,
+    ) -> Option<Box<Expr>> {
+        let mut expr = f(self)?;
 
         while let Some(operator) = self.consume(tokens) {
-            let right = f(self);
+            let right = f(self)?;
             expr = Box::new(Expr::Binary(expr, operator, right))
         }
-        return expr;
+        Some(expr)
     }
 
-    fn consume(&'a mut self, tokens: &[TokenType]) -> Option<Token> {
-        self.tokens.get(self.current).and_then(|curr| {
-            self.current += 1;
-            tokens.iter().find_map(|x| {
-                if curr.token_type == *x {
-                    Some(curr.clone())
-                } else {
-                    None
-                }
-            })
-        })
+    fn consume(&mut self, tokens: &[TokenType]) -> Option<Token> {
+        let curr = self.tokens.peek()?;
+        tokens.iter().find(|x| curr.token_type == **x)?;
+        self.tokens.next()
     }
 }
