@@ -1,36 +1,31 @@
-use std::{iter::Peekable, vec};
+use std::vec;
 
 use crate::{
-    ast::Expr,
+    ast::{Declaration, Expr, Ident, Statement},
     scanner::{Token, TokenType, Tokens},
 };
 
-pub struct Statements {
-    statements: Peekable<vec::IntoIter<Expr>>,
+#[derive(Debug)]
+pub struct Declerations {
+    statements: vec::IntoIter<Declaration>,
 }
 
-impl Statements {
-    pub fn peek(&mut self) -> Option<&Expr> {
-        self.statements.peek()
-    }
-}
-
-impl Iterator for Statements {
-    type Item = Expr;
+impl Iterator for Declerations {
+    type Item = Declaration;
 
     fn next(&mut self) -> Option<Self::Item> {
         self.statements.next()
     }
 }
 
-pub fn parse(tokens: Tokens) -> Statements {
+pub fn parse(tokens: Tokens) -> Declerations {
     let mut parser = Parser::new(tokens);
-    let mut statements = Vec::new();
-    while let Some(expr) = parser.parse_statement() {
-        statements.push(*expr);
+    let mut decls = Vec::new();
+    while let Some(decl) = parser.parse_decleration() {
+        decls.push(decl);
     }
-    Statements {
-        statements: statements.into_iter().peekable(),
+    Declerations {
+        statements: decls.into_iter(),
     }
 }
 
@@ -43,12 +38,53 @@ impl Parser {
         Self { tokens }
     }
 
-    fn parse_statement(&mut self) -> Option<Box<Expr>> {
-        self.expression()
+    fn parse_decleration(&mut self) -> Option<Declaration> {
+        if self.consume(&[TokenType::Var]).is_some() {
+            let ident = self.ident()?;
+
+            let tok = self.consume(&[TokenType::Semicolon, TokenType::Equal])?;
+            if tok.token_type == TokenType::Semicolon {
+                return Some(Declaration::Var(ident, None));
+            }
+
+            return Some(Declaration::Var(ident, Some(*self.expression()?)));
+        }
+
+        Some(Declaration::Statement(self.statement()?))
     }
 }
 
 impl Parser {
+    fn ident(&mut self) -> Option<Ident> {
+        let tok = self.tokens.peek()?;
+        if let TokenType::Identifier(id) = &tok.token_type {
+            let id = id.clone();
+            let tok = self.tokens.next()?;
+            Some(Ident::new(id, tok))
+        } else {
+            None
+        }
+    }
+
+    fn semicolon(&mut self) -> Option<Token> {
+        self.consume(&[TokenType::Semicolon]).or_else(|| {
+            eprintln!("expected ';'");
+            None
+        })
+    }
+
+    fn statement(&mut self) -> Option<Statement> {
+        if self.consume(&[TokenType::Print]).is_some() {
+            let expr = *self.expression()?;
+            self.semicolon()?;
+            return Some(Statement::Print(expr));
+        }
+
+        let expr = *self.expression()?;
+        self.semicolon()?;
+        Some(Statement::Expr(expr))
+    }
+
     fn expression(&mut self) -> Option<Box<Expr>> {
         self.equality()
     }
@@ -104,7 +140,7 @@ impl Parser {
             return Some(Box::new(Expr::Literal(tok)));
         }
 
-        if let Some(operator) = self.consume(&[TokenType::LeftParen]) {
+        if self.consume(&[TokenType::LeftParen]).is_some() {
             let expr = self.expression()?;
             self.consume(&[TokenType::RightParen])?;
             return Some(Box::new(Expr::Grouping(expr)));

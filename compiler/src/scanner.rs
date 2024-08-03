@@ -1,5 +1,4 @@
 use std::{
-    cell,
     collections::HashMap,
     error, fmt,
     iter::Peekable,
@@ -216,7 +215,7 @@ fn scan_tokens(script: &String) -> Result<Vec<Token>, ScanError> {
                         Err(err) => return Err(ScanError::ParseFloat(err)),
                     }
                 } else {
-                    match num.parse::<u64>() {
+                    match num.parse::<i64>() {
                         Ok(val) => TokenType::Integer(val),
                         Err(err) => return Err(ScanError::ParseInt(err)),
                     }
@@ -313,11 +312,6 @@ pub struct Token {
     pub location_end: Location,
     pub lexeme: String,
 }
-impl Token {
-    pub(crate) fn clone(&self) -> Token {
-        todo!()
-    }
-}
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum TokenType {
@@ -347,7 +341,7 @@ pub enum TokenType {
     // Literals.
     Identifier(String),
     String(String),
-    Integer(u64),
+    Integer(i64),
     Decimal(f64),
 
     // Keywords.
