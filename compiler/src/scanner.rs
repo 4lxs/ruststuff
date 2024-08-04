@@ -364,3 +364,13 @@ pub enum TokenType {
 
     Eof,
 }
+
+impl TokenType {
+    /// Returns `true` if the token type is [`Identifier`].
+    ///
+    /// [`Identifier`]: TokenType::Identifier
+    #[must_use]
+    pub fn is_identifier(&self) -> bool {
+        matches!(self, Self::Identifier(..))
+    }
+}

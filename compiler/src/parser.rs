@@ -46,8 +46,9 @@ impl Parser {
             if tok.token_type == TokenType::Semicolon {
                 return Some(Declaration::Var(ident, None));
             }
-
-            return Some(Declaration::Var(ident, Some(*self.expression()?)));
+            let val = *self.expression()?;
+            self.semicolon()?;
+            return Some(Declaration::Var(ident, Some(val)));
         }
 
         Some(Declaration::Statement(self.statement()?))
@@ -80,9 +81,12 @@ impl Parser {
             return Some(Statement::Print(expr));
         }
 
-        let expr = *self.expression()?;
-        self.semicolon()?;
-        Some(Statement::Expr(expr))
+        if let Some(expr) = self.expression() {
+            self.semicolon()?;
+            return Some(Statement::Expr(*expr));
+        }
+        self.consume(&[TokenType::Semicolon])?;
+        Some(Statement::Empty)
     }
 
     fn expression(&mut self) -> Option<Box<Expr>> {
@@ -134,6 +138,7 @@ impl Parser {
             TokenType::Integer(_) => Some(curr),
             TokenType::String(_) => Some(curr),
             TokenType::Decimal(_) => Some(curr),
+            TokenType::Identifier(_) => Some(curr),
             _ => None,
         });
         if let Some(tok) = matched_token {

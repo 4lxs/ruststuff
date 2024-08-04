@@ -22,15 +22,15 @@ fn repl() -> Result<(), Box<dyn Error>> {
     loop {
         print!("> ");
         std::io::stdout().flush()?;
-        for line in stdin().lines() {
-            let line = line.unwrap();
-            // println!("got: {line}");
-            run(line, &mut interpreter);
-        }
+
+        let mut line = String::new();
+        stdin().read_line(&mut line)?;
+        run(line, &mut interpreter);
     }
 }
 
 fn run(script: String, interpreter: &mut Interpreter) {
+    // println!("running {script}");
     let tokens = Tokens::new(script);
     // println!("scanned: {tokens:#?}");
 

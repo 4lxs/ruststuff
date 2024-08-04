@@ -2,8 +2,8 @@ use crate::scanner::Token;
 
 #[derive(Debug)]
 pub struct Ident {
-    name: String,
-    token: Token,
+    pub name: String,
+    pub token: Token,
 }
 
 impl Ident {
@@ -22,6 +22,7 @@ pub enum Declaration {
 pub enum Statement {
     Print(Expr),
     Expr(Expr),
+    Empty,
 }
 
 #[derive(Debug)]

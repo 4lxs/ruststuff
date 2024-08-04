@@ -1,45 +1,71 @@
 use crate::scanner::{Token, TokenType};
 
-#[derive(Debug)]
-pub enum Value {
+use super::environment::Environment;
+
+#[derive(Debug, Clone)]
+pub enum RValue {
     String(String),
     Int(i64),
     Decimal(f64),
+    Null,
+}
+
+pub type LValue = String;
+
+pub enum Value {
+    R(RValue),
+    L(LValue),
 }
 
 impl Value {
     pub fn new(val: Token) -> Self {
         match val.token_type {
-            TokenType::String(s) => Self::String(s),
-            TokenType::Integer(i) => Self::Int(i),
-            TokenType::Decimal(d) => Self::Decimal(d),
+            TokenType::Identifier(d) => Self::L(d),
+
+            TokenType::String(s) => Self::R(RValue::String(s)),
+            TokenType::Integer(i) => Self::R(RValue::Int(i)),
+            TokenType::Decimal(d) => Self::R(RValue::Decimal(d)),
             _ => panic!("unexpected token type {val:?}"),
+        }
+    }
+
+    pub fn as_rval<'a>(&'a self, env: &'a Environment) -> &'a RValue {
+        match self {
+            Self::R(rval) => rval,
+            Self::L(lval) => env.get_var(lval),
+        }
+    }
+
+    pub fn into_rval(self, env: &Environment) -> RValue {
+        match self {
+            Self::R(rval) => rval,
+            Self::L(lval) => env.get_var(&lval).clone(),
         }
     }
 }
 
-impl std::ops::Add<Value> for Value {
-    type Output = Value;
+impl<'l, 'r> std::ops::Add<&'r RValue> for &'l RValue {
+    type Output = RValue;
 
-    fn add(self, rhs: Value) -> Self::Output {
+    fn add(self, rhs: &'r RValue) -> Self::Output {
         match (self, rhs) {
-            (Self::Int(x), Self::Int(y)) => Self::Int(x + y),
-            (Self::Int(i), Self::Decimal(d)) => Self::Decimal(i as f64 + d),
-            (Self::Decimal(d), Self::Int(i)) => Self::Decimal(d + i as f64),
-            (Self::String(a), Self::String(b)) => Self::String(a + &b),
+            (RValue::Int(x), RValue::Int(y)) => RValue::Int(x + y),
+            (RValue::Int(i), RValue::Decimal(d)) => RValue::Decimal(*i as f64 + d),
+            (RValue::Decimal(d), RValue::Int(i)) => RValue::Decimal(d + *i as f64),
+            (RValue::String(a), RValue::String(b)) => RValue::String(a.clone() + b),
             _ => panic!("Invalid types for addition"),
         }
     }
 }
 
-impl std::ops::Sub<Value> for Value {
-    type Output = Value;
+impl<'l, 'r> std::ops::Sub<&'r RValue> for &'l RValue {
+    type Output = RValue;
 
-    fn sub(self, rhs: Value) -> Self::Output {
+    fn sub(self, rhs: &'r RValue) -> Self::Output {
         match (self, rhs) {
-            (Self::Int(x), Self::Int(y)) => Self::Int(x - y),
-            (Self::Int(i), Self::Decimal(d)) => Self::Decimal(i as f64 - d),
-            (Self::Decimal(d), Self::Int(i)) => Self::Decimal(d - i as f64),
+            (RValue::Int(x), RValue::Int(y)) => RValue::Int(x - y),
+            (RValue::Int(i), RValue::Decimal(d)) => RValue::Decimal(*i as f64 - d),
+            (RValue::Decimal(d), RValue::Int(i)) => RValue::Decimal(d - *i as f64),
             _ => panic!("Invalid types for subtraction"),
         }
     }
