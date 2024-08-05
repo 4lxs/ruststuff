@@ -366,11 +366,11 @@ pub enum TokenType {
 }
 
 impl TokenType {
-    /// Returns `true` if the token type is [`Identifier`].
+    /// Returns `true` if the token type is [`RightBrace`].
     ///
-    /// [`Identifier`]: TokenType::Identifier
+    /// [`RightBrace`]: TokenType::RightBrace
     #[must_use]
-    pub fn is_identifier(&self) -> bool {
-        matches!(self, Self::Identifier(..))
+    pub fn is_right_brace(&self) -> bool {
+        matches!(self, Self::RightBrace)
     }
 }

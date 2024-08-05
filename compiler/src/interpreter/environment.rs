@@ -9,15 +9,19 @@ pub struct Environment {
 }
 
 impl Environment {
-    pub fn new_scope(self) -> Self {
-        Self {
-            parent: Some(Box::new(self)),
-            ..Default::default()
-        }
+    pub fn new_scope(&mut self) {
+        let mut newscope = Environment::default();
+        std::mem::swap(self, &mut newscope);
+        self.parent = Some(Box::new(newscope));
     }
 
-    pub fn end_scope(self) -> Option<Self> {
-        Some(*self.parent?)
+    pub fn end_scope(&mut self) -> Box<Environment> {
+        let mut newscope = self
+            .parent
+            .take()
+            .expect("end_scope shouldn't be called without parent");
+        std::mem::swap(self, &mut newscope);
+        newscope
     }
 
     pub fn new_var(&mut self, name: LValue, val: Option<RValue>) {

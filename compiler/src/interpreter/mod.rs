@@ -5,7 +5,7 @@ use environment::Environment;
 use value::{RValue, Value};
 
 use crate::{
-    ast::{Declaration, Expr},
+    ast::{Expr, Statement},
     scanner::TokenType,
 };
 
@@ -19,14 +19,8 @@ impl Interpreter {
         Self::default()
     }
 
-    pub fn evaluate(&mut self, decl: Declaration) {
-        match decl {
-            Declaration::Var(ident, expr) => {
-                let val = expr.map(|e| self.expr(e).into_rval(&self.env));
-                self.var_decl(ident, val);
-            }
-            Declaration::Statement(stmt) => self.statement(stmt),
-        }
+    pub fn evaluate(&mut self, stmt: Statement) {
+        self.statement(stmt);
     }
 }
 
@@ -36,20 +30,29 @@ impl Interpreter {
         self.env.new_var(ident.name, val)
     }
 
-    fn statement(&mut self, stmt: crate::ast::Statement) {
+    fn statement(&mut self, stmt: Statement) {
         match stmt {
-            crate::ast::Statement::Print(expr) => {
+            Statement::Print(expr) => {
                 let val = self.expr(expr);
                 self.print_stmt(val.as_rval(&self.env));
             }
-            crate::ast::Statement::Expr(expr) => drop(self.expr(expr)),
-            crate::ast::Statement::Empty => (),
+            Statement::Expr(expr) => drop(self.expr(expr)),
+            Statement::Var(ident, expr) => {
+                let val = expr.map(|e| self.expr(e).into_rval(&self.env));
+                self.var_decl(ident, val);
+            }
+            Statement::Block(stmts) => {
+                self.env.new_scope();
+                stmts.into_iter().for_each(|x| self.statement(x));
+                self.env.end_scope();
+            }
+            Statement::Empty => (),
         }
     }
 
     fn expr(&mut self, expr: Expr) -> Value {
         match expr {
-            Expr::Unary(tok, expr) => match tok.token_type {
+            Expr::Unary(tok, _expr) => match tok.token_type {
                 _ => panic!("unexpected token type: {tok:?}"),
             },
             Expr::Binary(l, tok, r) => {
@@ -63,6 +66,11 @@ impl Interpreter {
             }
             Expr::Grouping(expr) => self.expr(*expr),
             Expr::Literal(l) => Value::new(l),
+            Expr::Assignment(lhs, _, rhs) => {
+                let val = self.expr(*rhs).into_rval(&self.env);
+                self.env.set_var(lhs.name.clone(), val);
+                Value::L(lhs.name)
+            }
         }
     }
 

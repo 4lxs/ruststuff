@@ -1,30 +1,30 @@
 use std::vec;
 
 use crate::{
-    ast::{Declaration, Expr, Ident, Statement},
+    ast::{Expr, Ident, Statement},
     scanner::{Token, TokenType, Tokens},
 };
 
 #[derive(Debug)]
-pub struct Declerations {
-    statements: vec::IntoIter<Declaration>,
+pub struct Statements {
+    statements: vec::IntoIter<Statement>,
 }
 
-impl Iterator for Declerations {
-    type Item = Declaration;
+impl Iterator for Statements {
+    type Item = Statement;
 
     fn next(&mut self) -> Option<Self::Item> {
         self.statements.next()
     }
 }
 
-pub fn parse(tokens: Tokens) -> Declerations {
+pub fn parse(tokens: Tokens) -> Statements {
     let mut parser = Parser::new(tokens);
     let mut decls = Vec::new();
     while let Some(decl) = parser.parse_decleration() {
         decls.push(decl);
     }
-    Declerations {
+    Statements {
         statements: decls.into_iter(),
     }
 }
@@ -38,20 +38,20 @@ impl Parser {
         Self { tokens }
     }
 
-    fn parse_decleration(&mut self) -> Option<Declaration> {
+    fn parse_decleration(&mut self) -> Option<Statement> {
         if self.consume(&[TokenType::Var]).is_some() {
             let ident = self.ident()?;
 
             let tok = self.consume(&[TokenType::Semicolon, TokenType::Equal])?;
             if tok.token_type == TokenType::Semicolon {
-                return Some(Declaration::Var(ident, None));
+                return Some(Statement::Var(ident, None));
             }
             let val = *self.expression()?;
             self.semicolon()?;
-            return Some(Declaration::Var(ident, Some(val)));
+            return Some(Statement::Var(ident, Some(val)));
         }
 
-        Some(Declaration::Statement(self.statement()?))
+        Some(self.statement()?)
     }
 }
 
@@ -81,6 +81,24 @@ impl Parser {
             return Some(Statement::Print(expr));
         }
 
+        if self.consume(&[TokenType::LeftBrace]).is_some() {
+            let mut stmts = vec![];
+            while !self
+                .tokens
+                .peek()
+                .is_some_and(|x| x.token_type.is_right_brace())
+            {
+                if let Some(stmt) = self.statement() {
+                    stmts.push(stmt);
+                } else {
+                    panic!("expected '}}'");
+                }
+            }
+            self.consume(&[TokenType::RightBrace])
+                .expect("loop ends with '}'");
+            return Some(Statement::Block(stmts));
+        }
+
         if let Some(expr) = self.expression() {
             self.semicolon()?;
             return Some(Statement::Expr(*expr));
@@ -90,7 +108,26 @@ impl Parser {
     }
 
     fn expression(&mut self) -> Option<Box<Expr>> {
-        self.equality()
+        self.assignment()
+    }
+
+    fn assignment(&mut self) -> Option<Box<Expr>> {
+        let expr = self.equality()?;
+
+        if let Some(eq) = self.consume(&[TokenType::Equal]) {
+            let rhs = self.expression();
+
+            if let Some(rhs) = rhs {
+                if let Expr::Literal(token) = *expr {
+                    if let TokenType::Identifier(name) = token.token_type.clone() {
+                        return Some(Box::new(Expr::Assignment(Ident { name, token }, eq, rhs)));
+                    }
+                }
+            }
+            panic!("invalid assignment target");
+        }
+
+        Some(expr)
     }
 
     fn equality(&mut self) -> Option<Box<Expr>> {
@@ -134,14 +171,15 @@ impl Parser {
             return Some(Box::new(Expr::Literal(operator)));
         }
 
-        let matched_token = self.tokens.next().and_then(|curr| match curr.token_type {
+        let matched_token = self.tokens.peek().and_then(|curr| match curr.token_type {
             TokenType::Integer(_) => Some(curr),
             TokenType::String(_) => Some(curr),
             TokenType::Decimal(_) => Some(curr),
             TokenType::Identifier(_) => Some(curr),
             _ => None,
         });
-        if let Some(tok) = matched_token {
+        if let Some(_) = matched_token {
+            let tok = self.tokens.next()?;
             return Some(Box::new(Expr::Literal(tok)));
         }
 

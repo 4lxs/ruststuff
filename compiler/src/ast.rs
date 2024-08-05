@@ -13,15 +13,11 @@ impl Ident {
 }
 
 #[derive(Debug)]
-pub enum Declaration {
-    Var(Ident, Option<Expr>),
-    Statement(Statement),
-}
-
-#[derive(Debug)]
 pub enum Statement {
+    Var(Ident, Option<Expr>),
     Print(Expr),
     Expr(Expr),
+    Block(Vec<Statement>),
     Empty,
 }
 
@@ -31,4 +27,15 @@ pub enum Expr {
     Binary(Box<Expr>, Token, Box<Expr>),
     Grouping(Box<Expr>),
     Literal(Token),
+    Assignment(Ident, Token, Box<Expr>),
+}
+
+impl Expr {
+    pub fn as_literal(&self) -> Option<&Token> {
+        if let Self::Literal(v) = self {
+            Some(v)
+        } else {
+            None
+        }
+    }
 }

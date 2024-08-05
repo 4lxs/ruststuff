@@ -11,13 +11,11 @@ use std::{
 use interpreter::Interpreter;
 use scanner::Tokens;
 
-fn main() {
-    if let Err(err) = repl() {
-        eprintln!("fuck: {err}");
-    }
+fn main() -> anyhow::Result<()> {
+    repl()
 }
 
-fn repl() -> Result<(), Box<dyn Error>> {
+fn repl() -> anyhow::Result<()> {
     let mut interpreter = Interpreter::new();
     loop {
         print!("> ");
