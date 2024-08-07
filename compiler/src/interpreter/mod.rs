@@ -64,6 +64,23 @@ impl Interpreter {
             },
             Expr::Binary(l, tok, r) => {
                 let lhs = self.expr(*l);
+                match tok.token_type {
+                    TokenType::Or => {
+                        if lhs.as_rval(&self.env).is_truthy() {
+                            return Value::from(true);
+                        } else {
+                            return Value::from(self.expr(*r).as_rval(&self.env).is_truthy());
+                        }
+                    }
+                    TokenType::And => {
+                        if !lhs.as_rval(&self.env).is_truthy() {
+                            return Value::from(false);
+                        } else {
+                            return Value::from(self.expr(*r).as_rval(&self.env).is_truthy());
+                        }
+                    }
+                    _ => (),
+                }
                 let rhs = self.expr(*r);
                 match tok.token_type {
                     TokenType::Plus => Value::R(lhs.as_rval(&self.env) + rhs.as_rval(&self.env)),

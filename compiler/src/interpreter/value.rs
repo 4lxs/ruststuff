@@ -4,6 +4,7 @@ use super::environment::Environment;
 
 #[derive(Debug, Clone)]
 pub enum RValue {
+    Boolean(bool),
     String(String),
     Int(i64),
     Decimal(f64),
@@ -13,6 +14,7 @@ pub enum RValue {
 impl RValue {
     pub fn is_truthy(&self) -> bool {
         match *self {
+            RValue::Boolean(b) => b,
             RValue::Int(i) => i != 0,
             RValue::Null => false,
             _ => panic!("can't establish truthyness for {self:?}"),
@@ -51,6 +53,12 @@ impl Value {
             Self::R(rval) => rval,
             Self::L(lval) => env.get_var(&lval).clone(),
         }
+    }
+}
+
+impl From<bool> for Value {
+    fn from(value: bool) -> Self {
+        Self::R(RValue::Boolean(value))
     }
 }
 

@@ -194,7 +194,7 @@ impl Parser {
     }
 
     fn assignment(&mut self) -> anyhow::Result<Box<Expr>> {
-        let expr = self.equality()?;
+        let expr = self.logic_or()?;
 
         if let Some(eq) = self.consume(&[TokenType::Equal]) {
             let rhs = self.expression()?;
@@ -211,6 +211,14 @@ impl Parser {
         }
 
         Ok(expr)
+    }
+
+    fn logic_or(&mut self) -> anyhow::Result<Box<Expr>> {
+        self.match_binary(&[TokenType::Or], Parser::logic_and)
+    }
+
+    fn logic_and(&mut self) -> anyhow::Result<Box<Expr>> {
+        self.match_binary(&[TokenType::And], Parser::equality)
     }
 
     fn equality(&mut self) -> anyhow::Result<Box<Expr>> {
