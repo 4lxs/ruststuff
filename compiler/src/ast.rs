@@ -2,13 +2,29 @@ use crate::scanner::Token;
 
 #[derive(Debug)]
 pub struct Ident {
-    pub name: String,
-    pub token: Token,
+    token: Token,
+    name: String,
 }
 
 impl Ident {
-    pub fn new(name: String, token: Token) -> Self {
-        Self { name, token }
+    pub fn new(token: Token) -> anyhow::Result<Self, Token> {
+        if let Some(name) = token.token_type.as_identifier() {
+            let name = name.clone();
+            Ok(Self { token, name })
+        } else {
+            Err(token)
+        }
+    }
+
+    pub fn name(&self) -> &String {
+        &self.name
+    }
+
+    pub fn into_name(self) -> String {
+        self.token
+            .token_type
+            .try_into_identifier()
+            .expect("checked in constructor")
     }
 }
 
@@ -28,14 +44,4 @@ pub enum Expr {
     Grouping(Box<Expr>),
     Literal(Token),
     Assignment(Ident, Token, Box<Expr>),
-}
-
-impl Expr {
-    pub fn as_literal(&self) -> Option<&Token> {
-        if let Self::Literal(v) = self {
-            Some(v)
-        } else {
-            None
-        }
-    }
 }

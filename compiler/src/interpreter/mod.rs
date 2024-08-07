@@ -26,8 +26,8 @@ impl Interpreter {
 
 impl Interpreter {
     fn var_decl(&mut self, ident: crate::ast::Ident, val: Option<RValue>) {
-        println!("setting {} = {val:?}", ident.name);
-        self.env.new_var(ident.name, val)
+        println!("setting {} = {val:?}", ident.name());
+        self.env.new_var(ident.into_name(), val)
     }
 
     fn statement(&mut self, stmt: Statement) {
@@ -68,8 +68,8 @@ impl Interpreter {
             Expr::Literal(l) => Value::new(l),
             Expr::Assignment(lhs, _, rhs) => {
                 let val = self.expr(*rhs).into_rval(&self.env);
-                self.env.set_var(lhs.name.clone(), val);
-                Value::L(lhs.name)
+                self.env.set_var(lhs.name().clone(), val);
+                Value::L(lhs.into_name())
             }
         }
     }

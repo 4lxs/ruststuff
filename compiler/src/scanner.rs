@@ -8,6 +8,11 @@ use std::{
     vec,
 };
 
+pub fn scan(script: String) -> anyhow::Result<Tokens> {
+    let tokens = scan_tokens(&script)?.into_iter().peekable();
+    Ok(Tokens { tokens })
+}
+
 #[derive(Debug)]
 pub enum ScanError {
     UnexpectedToken(char),
@@ -99,11 +104,6 @@ pub struct Tokens {
 }
 
 impl Tokens {
-    pub fn new(script: String) -> Self {
-        let tokens = scan_tokens(&script).unwrap().into_iter().peekable();
-        Self { tokens }
-    }
-
     pub fn peek(&mut self) -> Option<&Token> {
         self.tokens.peek()
     }
@@ -372,5 +372,29 @@ impl TokenType {
     #[must_use]
     pub fn is_right_brace(&self) -> bool {
         matches!(self, Self::RightBrace)
+    }
+
+    /// Returns `true` if the token type is [`Identifier`].
+    ///
+    /// [`Identifier`]: TokenType::Identifier
+    #[must_use]
+    pub fn is_identifier(&self) -> bool {
+        matches!(self, Self::Identifier(..))
+    }
+
+    pub fn as_identifier(&self) -> Option<&String> {
+        if let Self::Identifier(v) = self {
+            Some(v)
+        } else {
+            None
+        }
+    }
+
+    pub fn try_into_identifier(self) -> Result<String, Self> {
+        if let Self::Identifier(v) = self {
+            Ok(v)
+        } else {
+            Err(self)
+        }
     }
 }
