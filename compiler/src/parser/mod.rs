@@ -125,23 +125,12 @@ impl Parser {
             return Ok(Statement::Print(expr));
         }
 
-        if self.consume(&[TokenType::LeftBrace]).is_some() {
-            println!("brace");
-            let mut stmts = vec![];
-            while self
-                .tokens
-                .peek()
-                .is_some_and(|x| !x.token_type.is_right_brace())
-            {
-                let stmt = self
-                    .decleration()?
-                    .ok_or(anyhow!("unexpected EoF. block not closed"))?;
-                stmts.push(stmt);
-            }
+        if let Some(block) = self.block()? {
+            return Ok(block);
+        }
 
-            self.consume(&[TokenType::RightBrace])
-                .ok_or_else(|| self.unexpected("expected '}' to close block"))?;
-            return Ok(Statement::Block(stmts));
+        if let Some(cond) = self.conditional()? {
+            return Ok(cond);
         }
 
         if self.consume(&[TokenType::Semicolon]).is_some() {
@@ -153,8 +142,55 @@ impl Parser {
         Ok(Statement::Expr(*expr))
     }
 
+    fn block(&mut self) -> anyhow::Result<Option<Statement>> {
+        if self.consume(&[TokenType::LeftBrace]).is_none() {
+            return Ok(None);
+        }
+        let mut stmts = vec![];
+        while self
+            .tokens
+            .peek()
+            .is_some_and(|x| !x.token_type.is_right_brace())
+        {
+            let stmt = self
+                .decleration()?
+                .ok_or(anyhow!("unexpected EoF. block not closed"))?;
+            stmts.push(stmt);
+        }
+
+        self.consume(&[TokenType::RightBrace])
+            .ok_or_else(|| self.unexpected("expected '}' to close block"))?;
+        Ok(Some(Statement::Block(stmts)))
+    }
+
     fn expression(&mut self) -> anyhow::Result<Box<Expr>> {
         self.assignment()
+    }
+
+    fn conditional(&mut self) -> anyhow::Result<Option<Statement>> {
+        if self.consume(&[TokenType::If]).is_none() {
+            return Ok(None);
+        }
+
+        let condition = self.expression()?;
+
+        let when_true = self
+            .block()?
+            .ok_or_else(|| self.unexpected("expected '{'"))?;
+
+        if self.consume(&[TokenType::Else]).is_none() {
+            return Ok(Some(Statement::If(*condition, Box::new(when_true), None)));
+        }
+
+        let when_false = self
+            .block()?
+            .ok_or_else(|| self.unexpected("expected '{'"))?;
+
+        Ok(Some(Statement::If(
+            *condition,
+            Box::new(when_true),
+            Some(Box::new(when_false)),
+        )))
     }
 
     fn assignment(&mut self) -> anyhow::Result<Box<Expr>> {
@@ -251,7 +287,7 @@ impl Parser {
     }
 
     fn consume(&mut self, tokens: &[TokenType]) -> Option<Token> {
-        let curr = self.tokens.peek()?;
+        let curr = self.peek();
         tokens.iter().find(|x| curr.token_type == **x)?;
         self.tokens.next()
     }

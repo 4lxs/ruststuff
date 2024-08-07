@@ -10,6 +10,16 @@ pub enum RValue {
     Null,
 }
 
+impl RValue {
+    pub fn is_truthy(&self) -> bool {
+        match *self {
+            RValue::Int(i) => i != 0,
+            RValue::Null => false,
+            _ => panic!("can't establish truthyness for {self:?}"),
+        }
+    }
+}
+
 pub type LValue = String;
 
 pub enum Value {
@@ -66,6 +76,32 @@ impl<'l, 'r> std::ops::Sub<&'r RValue> for &'l RValue {
             (RValue::Int(x), RValue::Int(y)) => RValue::Int(x - y),
             (RValue::Int(i), RValue::Decimal(d)) => RValue::Decimal(*i as f64 - d),
             (RValue::Decimal(d), RValue::Int(i)) => RValue::Decimal(d - *i as f64),
+            _ => panic!("Invalid types for subtraction"),
+        }
+    }
+}
+
+impl<'l, 'r> std::ops::Mul<&'r RValue> for &'l RValue {
+    type Output = RValue;
+
+    fn mul(self, rhs: &'r RValue) -> Self::Output {
+        match (self, rhs) {
+            (RValue::Int(x), RValue::Int(y)) => RValue::Int(x * y),
+            (RValue::Int(i), RValue::Decimal(d)) => RValue::Decimal(*i as f64 * d),
+            (RValue::Decimal(d), RValue::Int(i)) => RValue::Decimal(d * *i as f64),
+            _ => panic!("Invalid types for subtraction"),
+        }
+    }
+}
+
+impl<'l, 'r> std::ops::Div<&'r RValue> for &'l RValue {
+    type Output = RValue;
+
+    fn div(self, rhs: &'r RValue) -> Self::Output {
+        match (self, rhs) {
+            (RValue::Int(x), RValue::Int(y)) => RValue::Int(x / y),
+            (RValue::Int(i), RValue::Decimal(d)) => RValue::Decimal(*i as f64 / d),
+            (RValue::Decimal(d), RValue::Int(i)) => RValue::Decimal(d / *i as f64),
             _ => panic!("Invalid types for subtraction"),
         }
     }

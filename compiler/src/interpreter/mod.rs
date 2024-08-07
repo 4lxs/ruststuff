@@ -46,6 +46,13 @@ impl Interpreter {
                 stmts.into_iter().for_each(|x| self.statement(x));
                 self.env.end_scope();
             }
+            Statement::If(cond, when_true, when_false) => {
+                if self.expr(cond).as_rval(&self.env).is_truthy() {
+                    self.statement(*when_true)
+                } else if let Some(when_false) = when_false {
+                    self.statement(*when_false)
+                }
+            }
             Statement::Empty => (),
         }
     }
@@ -61,6 +68,8 @@ impl Interpreter {
                 match tok.token_type {
                     TokenType::Plus => Value::R(lhs.as_rval(&self.env) + rhs.as_rval(&self.env)),
                     TokenType::Minus => Value::R(lhs.as_rval(&self.env) - rhs.as_rval(&self.env)),
+                    TokenType::Star => Value::R(lhs.as_rval(&self.env) * rhs.as_rval(&self.env)),
+                    TokenType::Slash => Value::R(lhs.as_rval(&self.env) / rhs.as_rval(&self.env)),
                     _ => panic!("unexpected token type: {tok:?}"),
                 }
             }

@@ -30,10 +30,11 @@ impl Ident {
 
 #[derive(Debug)]
 pub enum Statement {
+    Block(Vec<Statement>),
+    If(Expr, Box<Statement>, Option<Box<Statement>>),
     Var(Ident, Option<Expr>),
     Print(Expr),
     Expr(Expr),
-    Block(Vec<Statement>),
     Empty,
 }
 
