@@ -305,7 +305,7 @@ impl ops::Sub<u64> for Location {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Token {
     pub token_type: TokenType,
     pub location_start: Location,

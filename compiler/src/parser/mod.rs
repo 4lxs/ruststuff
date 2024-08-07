@@ -129,6 +129,10 @@ impl Parser {
             return Ok(block);
         }
 
+        if let Some(while_loop) = self.while_loop()? {
+            return Ok(while_loop);
+        }
+
         if let Some(cond) = self.conditional()? {
             return Ok(cond);
         }
@@ -140,6 +144,20 @@ impl Parser {
         let expr = self.expression()?;
         self.semicolon()?;
         Ok(Statement::Expr(*expr))
+    }
+
+    fn while_loop(&mut self) -> anyhow::Result<Option<Statement>> {
+        if self.consume(&[TokenType::While]).is_none() {
+            return Ok(None);
+        }
+
+        let condition = self.expression()?;
+
+        let body = self
+            .block()?
+            .ok_or_else(|| self.unexpected("expected '{'"))?;
+
+        Ok(Some(Statement::While(*condition, Box::new(body))))
     }
 
     fn block(&mut self) -> anyhow::Result<Option<Statement>> {

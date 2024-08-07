@@ -1,6 +1,6 @@
 use crate::scanner::Token;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Ident {
     token: Token,
     name: String,
@@ -32,6 +32,7 @@ impl Ident {
 pub enum Statement {
     Block(Vec<Statement>),
     If(Expr, Box<Statement>, Option<Box<Statement>>),
+    While(Expr, Box<Statement>),
     Var(Ident, Option<Expr>),
     Print(Expr),
     Expr(Expr),
