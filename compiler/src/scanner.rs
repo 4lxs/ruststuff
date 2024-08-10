@@ -397,4 +397,12 @@ impl TokenType {
             Err(self)
         }
     }
+
+    /// Returns `true` if the token type is [`RightParen`].
+    ///
+    /// [`RightParen`]: TokenType::RightParen
+    #[must_use]
+    pub fn is_right_paren(&self) -> bool {
+        matches!(self, Self::RightParen)
+    }
 }

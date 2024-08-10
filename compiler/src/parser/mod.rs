@@ -126,7 +126,7 @@ impl Parser {
         }
 
         if let Some(block) = self.block()? {
-            return Ok(block);
+            return Ok(Statement::Block(block));
         }
 
         if let Some(while_loop) = self.while_loop()? {
@@ -137,6 +137,14 @@ impl Parser {
             return Ok(cond);
         }
 
+        if let Some(func) = self.function()? {
+            return Ok(func);
+        }
+
+        if let Some(ret) = self.return_stmt()? {
+            return Ok(ret);
+        }
+
         if self.consume(&[TokenType::Semicolon]).is_some() {
             return Ok(Statement::Empty);
         }
@@ -144,6 +152,56 @@ impl Parser {
         let expr = self.expression()?;
         self.semicolon()?;
         Ok(Statement::Expr(*expr))
+    }
+
+    fn return_stmt(&mut self) -> anyhow::Result<Option<Statement>> {
+        if self.consume(&[TokenType::Return]).is_none() {
+            return Ok(None);
+        }
+
+        let retval = self.expression()?;
+
+        self.semicolon()?;
+
+        Ok(Some(Statement::Return(*retval)))
+    }
+
+    fn function(&mut self) -> anyhow::Result<Option<Statement>> {
+        if self.consume(&[TokenType::Fun]).is_none() {
+            return Ok(None);
+        }
+
+        let name = self.ident(None)?;
+
+        let params = self.params()?;
+
+        let body = self
+            .block()?
+            .ok_or_else(|| self.unexpected("expected '{'"))?;
+
+        Ok(Some(Statement::Function(name, params, body)))
+    }
+
+    fn params(&mut self) -> anyhow::Result<Vec<Ident>> {
+        self.consume(&[TokenType::LeftParen])
+            .ok_or_else(|| self.unexpected("expected '('"))?;
+
+        let mut params = vec![];
+
+        if !self.peek().token_type.is_right_paren() {
+            params.push(self.ident(None)?);
+
+            while !self.peek().token_type.is_right_paren() {
+                self.consume(&[TokenType::Comma])
+                    .ok_or_else(|| self.unexpected("expected ','"))?;
+                params.push(self.ident(None)?);
+            }
+        }
+
+        self.consume(&[TokenType::RightParen])
+            .ok_or_else(|| self.unexpected("expected ')' to close parameter list"))?;
+
+        Ok(params)
     }
 
     fn while_loop(&mut self) -> anyhow::Result<Option<Statement>> {
@@ -157,10 +215,10 @@ impl Parser {
             .block()?
             .ok_or_else(|| self.unexpected("expected '{'"))?;
 
-        Ok(Some(Statement::While(*condition, Box::new(body))))
+        Ok(Some(Statement::While(*condition, body)))
     }
 
-    fn block(&mut self) -> anyhow::Result<Option<Statement>> {
+    fn block(&mut self) -> anyhow::Result<Option<Vec<Statement>>> {
         if self.consume(&[TokenType::LeftBrace]).is_none() {
             return Ok(None);
         }
@@ -178,7 +236,7 @@ impl Parser {
 
         self.consume(&[TokenType::RightBrace])
             .ok_or_else(|| self.unexpected("expected '}' to close block"))?;
-        Ok(Some(Statement::Block(stmts)))
+        Ok(Some(stmts))
     }
 
     fn expression(&mut self) -> anyhow::Result<Box<Expr>> {
@@ -197,18 +255,14 @@ impl Parser {
             .ok_or_else(|| self.unexpected("expected '{'"))?;
 
         if self.consume(&[TokenType::Else]).is_none() {
-            return Ok(Some(Statement::If(*condition, Box::new(when_true), None)));
+            return Ok(Some(Statement::If(*condition, when_true, None)));
         }
 
         let when_false = self
             .block()?
             .ok_or_else(|| self.unexpected("expected '{'"))?;
 
-        Ok(Some(Statement::If(
-            *condition,
-            Box::new(when_true),
-            Some(Box::new(when_false)),
-        )))
+        Ok(Some(Statement::If(*condition, when_true, Some(when_false))))
     }
 
     fn assignment(&mut self) -> anyhow::Result<Box<Expr>> {
@@ -271,8 +325,35 @@ impl Parser {
             let right = self.unary()?;
             Ok(Box::new(Expr::Unary(operator, right)))
         } else {
-            self.primary()
+            self.call()
         }
+    }
+
+    fn call(&mut self) -> anyhow::Result<Box<Expr>> {
+        let mut expr = self.primary()?;
+        while self.consume(&[TokenType::LeftParen]).is_some() {
+            let args = self.args()?;
+            self.consume(&[TokenType::RightParen])
+                .ok_or_else(|| self.unexpected("expected ')' to close argument list"))?;
+            expr = Box::new(Expr::Call(expr, args));
+        }
+
+        Ok(expr)
+    }
+
+    fn args(&mut self) -> anyhow::Result<Vec<Expr>> {
+        let mut args = vec![];
+        if !self.peek().token_type.is_right_paren() {
+            args.push(*self.expression()?);
+
+            while !self.peek().token_type.is_right_paren() {
+                self.consume(&[TokenType::Comma])
+                    .ok_or_else(|| self.unexpected("expected ','"))?;
+                args.push(*self.expression()?);
+            }
+        }
+
+        Ok(args)
     }
 
     fn primary(&mut self) -> anyhow::Result<Box<Expr>> {
@@ -282,6 +363,7 @@ impl Parser {
 
         match self.peek().token_type {
             TokenType::Integer(_)
+            | TokenType::Nil
             | TokenType::String(_)
             | TokenType::Decimal(_)
             | TokenType::Identifier(_) => return Ok(Box::new(Expr::Literal(self.next()))),

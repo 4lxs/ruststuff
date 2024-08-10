@@ -28,22 +28,35 @@ impl Ident {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Statement {
     Block(Vec<Statement>),
-    If(Expr, Box<Statement>, Option<Box<Statement>>),
-    While(Expr, Box<Statement>),
+    If(Expr, Vec<Statement>, Option<Vec<Statement>>),
+    While(Expr, Vec<Statement>),
     Var(Ident, Option<Expr>),
     Print(Expr),
     Expr(Expr),
+    Function(Ident, Vec<Ident>, Vec<Statement>),
+    Return(Expr),
     Empty,
 }
 
-#[derive(Debug)]
+impl Statement {
+    pub fn try_into_block(self) -> Result<Vec<Statement>, Self> {
+        if let Self::Block(b) = self {
+            Ok(b)
+        } else {
+            Err(self)
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
 pub enum Expr {
     Unary(Token, Box<Expr>),
     Binary(Box<Expr>, Token, Box<Expr>),
     Grouping(Box<Expr>),
     Literal(Token),
     Assignment(Ident, Token, Box<Expr>),
+    Call(Box<Expr>, Vec<Expr>),
 }
